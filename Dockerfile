@@ -13,6 +13,8 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
 COPY app ./app
+COPY alembic ./alembic
+COPY alembic.ini ./
 
 RUN mkdir -p /app/data/uploads
 
