@@ -1,0 +1,17 @@
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+*.pyd
+.env
+.env.docker
+*.db
+*.sqlite
+*.sqlite3
+data/uploads
+.pytest_cache
+.coverage
+htmlcov
+.vscode
+.idea
