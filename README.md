@@ -1,0 +1,1 @@
+﻿A self-hosted file management and sharing system built with FastAPI, SQLAlchemy, PostgreSQL, Docker, and Uvicorn.
