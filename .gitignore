@@ -16,3 +16,4 @@ data/uploads/*
 .idea/
 .DS_Store
 Thumbs.db
+.ruff_cache/
