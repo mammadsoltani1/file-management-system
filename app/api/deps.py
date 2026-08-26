@@ -10,7 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.db.session import get_db_session
 from app.models.user import User
+from app.services.file_service import FileService
 from app.services.folder_service import FolderService
+from app.storage.base import StorageProvider
+from app.storage.dependencies import get_storage_provider
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -45,3 +48,10 @@ def get_folder_service(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> FolderService:
     return FolderService(session)
+
+
+def get_file_service(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    storage: Annotated[StorageProvider, Depends(get_storage_provider)],
+) -> FileService:
+    return FileService(session=session, storage=storage)
