@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.db.session import get_db_session
 from app.models.user import User
+from app.services.folder_service import FolderService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -38,3 +39,9 @@ async def get_current_user(
         raise credential_exception
 
     return user
+
+
+def get_folder_service(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> FolderService:
+    return FolderService(session)
