@@ -7,6 +7,7 @@ from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.models.folder import Folder
 from app.models.stored_file import StoredFile
 from app.repositories.file_repository import FileRepo
 from app.repositories.folder_repository import FolderRepo
@@ -103,3 +104,17 @@ class FileService:
             raise InvalidFilenameError
 
         return safe_filename
+
+    async def list_directory(
+        self, *, owner_id: UUID, folder_id: UUID | None
+    ) -> tuple[list[Folder], list[StoredFile]]:
+        # a null folder id means the user's root page
+        if folder_id is not None:
+            folder = await self._folders.get_for_owner(folder_id, owner_id)
+            if folder is None:
+                raise UploadFolderNotFoundError
+
+        folders = await self._folders.list_for_owner(owner_id, folder_id)
+        files = await self._files.list_for_owner(owner_id, folder_id)
+
+        return folders, files

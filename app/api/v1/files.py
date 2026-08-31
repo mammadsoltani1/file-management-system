@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 
 from app.api.deps import get_current_user, get_file_service
 from app.models.user import User
+from app.schemas.directory import DirectoryListing
 from app.schemas.file import FilePublic
 from app.services.file_service import (
     FileService,
@@ -43,4 +44,24 @@ async def upload_file(
         raise HTTPException(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail="the uploaded file exceeds the configured size limit",
+        ) from err
+
+
+@router.get("", response_model=DirectoryListing)
+async def list_directory(
+    current_user: Annotated[User, Depends(get_current_user)],
+    file_service: Annotated[FileService, Depends(get_file_service)],
+    folder_id: UUID | None = None,
+) -> DirectoryListing:
+    try:
+        folders, files = await file_service.list_directory(
+            owner_id=current_user.id, folder_id=folder_id
+        )
+
+        return DirectoryListing(folder_id=folder_id, folders=folders, files=files)
+
+    except UploadFolderNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="the requested folder was not found",
         ) from err
