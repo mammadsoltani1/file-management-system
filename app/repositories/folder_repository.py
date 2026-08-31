@@ -20,7 +20,12 @@ class FolderRepo:
         return result.scalar_one_or_none()
 
     async def exists_with_name(
-        self, *, owner_id: UUID, parent_id: UUID | None, name: str
+        self,
+        *,
+        owner_id: UUID,
+        parent_id: UUID | None,
+        name: str,
+        exclude_folder_id: UUID | None = None,
     ) -> bool:
         statement = select(Folder).where(
             Folder.owner_id == owner_id,
@@ -28,8 +33,10 @@ class FolderRepo:
             Folder.name == name,
         )
 
-        result = await self._session.execute(statement)
+        if exclude_folder_id is not None:
+            statement = statement.where(Folder.id != exclude_folder_id)
 
+        result = await self._session.execute(statement)
         return result.scalar_one_or_none() is not None
 
     async def list_for_parent(

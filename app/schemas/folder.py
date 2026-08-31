@@ -9,6 +9,15 @@ class FolderCreate(BaseModel):
     parent_id: UUID | None = None
 
 
+class FolderRename(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+
+
+class FolderMove(BaseModel):
+    # UUID moves into a folder, None moves to root
+    parent_id: UUID | None = None
+
+
 class FolderPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
