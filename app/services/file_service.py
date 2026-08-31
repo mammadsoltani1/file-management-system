@@ -141,3 +141,15 @@ class FileService:
 
         path = await self._storage.get_path(stored_file.storage_key)
         return stored_file, path
+
+    async def delete_file(self, owner_id: UUID, file_id: UUID) -> None:
+        stored_file = await self._files.get_for_owner(
+            file_id=file_id, owner_id=owner_id
+        )
+
+        if stored_file is None:
+            raise StoredFileNotFoundError
+
+        await self._storage.delete(stored_file.storage_key)
+        await self._files.delete(stored_file)
+        await self._session.commit()

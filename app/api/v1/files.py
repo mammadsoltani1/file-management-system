@@ -1,7 +1,16 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.responses import FileResponse
 
 from app.api.deps import get_current_user, get_file_service
@@ -98,3 +107,21 @@ async def download_file(
         media_type=stored_file.content_type,
         filename=stored_file.original_filename,
     )
+
+
+@router.delete("/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_file(
+    file_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    file_service: Annotated[FileService, Depends(get_file_service)],
+) -> Response:
+    try:
+        await file_service.delete_file(owner_id=current_user.id, file_id=file_id)
+
+    except StoredFileNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="the requested file was not found",
+        ) from err
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

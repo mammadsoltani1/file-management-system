@@ -38,3 +38,6 @@ class FileRepo:
 
         result = await self._session.scalars(statement)
         return result.one_or_none()
+
+    async def delete(self, stored_file: StoredFile) -> None:
+        await self._session.delete(stored_file)
