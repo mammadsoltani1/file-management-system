@@ -41,3 +41,20 @@ class FileRepo:
 
     async def delete(self, stored_file: StoredFile) -> None:
         await self._session.delete(stored_file)
+
+    async def list_for_folder_ids(
+        self, owner_id: UUID, folder_ids: list[UUID]
+    ) -> list[StoredFile]:
+        if not folder_ids:
+            return []
+
+        statement = (
+            select(StoredFile)
+            .where(
+                StoredFile.owner_id == owner_id, StoredFile.folder_id.in_(folder_ids)
+            )
+            .order_by(StoredFile.created_at.asc())
+        )
+
+        result = await self._session.scalars(statement)
+        return list(result.all())

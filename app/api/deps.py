@@ -46,8 +46,9 @@ async def get_current_user(
 
 def get_folder_service(
     session: Annotated[AsyncSession, Depends(get_db_session)],
+    storage: Annotated[StorageProvider, Depends(get_storage_provider)],
 ) -> FolderService:
-    return FolderService(session)
+    return FolderService(session=session, storage=storage)
 
 
 def get_file_service(

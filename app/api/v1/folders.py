@@ -1,13 +1,15 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.api.deps import get_current_user, get_folder_service
 from app.models.user import User
 from app.schemas.folder import FolderCreate, FolderPublic
 from app.services.folder_service import (
     FolderAlreadyExistsError,
+    FolderNotEmptyError,
+    FolderNotFoundError,
     FolderService,
     ParentFolderNotFoundError,
 )
@@ -52,3 +54,30 @@ async def list_folders(
     return await folder_service.list_folders(
         owner_id=current_user.id, parent_id=parent_id
     )
+
+
+@router.delete("/{folder_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_folder(
+    folder_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    folder_service: Annotated[FolderService, Depends(get_folder_service)],
+    recursive: bool = Query(default=False),
+) -> Response:
+    try:
+        await folder_service.delete_folder(
+            owner_id=current_user.id, folder_id=folder_id, recursive=recursive
+        )
+
+    except FolderNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="the requested folder was not found",
+        ) from err
+
+    except FolderNotEmptyError as err:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="folder is not empty, retry with recursive=True to delete its content",
+        ) from err
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

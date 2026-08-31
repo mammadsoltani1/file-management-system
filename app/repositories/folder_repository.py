@@ -65,3 +65,6 @@ class FolderRepo:
 
         result = await self._session.scalars(statement)
         return list(result.all())
+
+    async def delete(self, folder: Folder) -> None:
+        await self._session.delete(folder)
