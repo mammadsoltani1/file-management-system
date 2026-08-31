@@ -48,7 +48,7 @@ async def upload_file(
 
     except InvalidFilenameError as err:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="the uploaded filename is invalid",
         ) from err
 

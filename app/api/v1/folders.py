@@ -28,7 +28,7 @@ async def create_folder(
 
     except ValueError as err:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(err)
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(err)
         ) from err
 
     except ParentFolderNotFoundError as err:
