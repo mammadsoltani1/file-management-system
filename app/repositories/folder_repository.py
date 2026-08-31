@@ -47,3 +47,21 @@ class FolderRepo:
 
     def add(self, folder: Folder) -> None:
         self._session.add(folder)
+
+    async def list_for_owner(
+        self, owner_id: UUID, parent_id: UUID | None
+    ) -> list[Folder]:
+        parent_condition = (
+            Folder.parent_id.is_(None)
+            if parent_id is None
+            else Folder.parent_id == parent_id
+        )
+
+        statement = (
+            select(Folder)
+            .where(Folder.owner_id == owner_id, parent_condition)
+            .order_by(Folder.name.asc())
+        )
+
+        result = await self._session.scalars(statement)
+        return list(result.all())
