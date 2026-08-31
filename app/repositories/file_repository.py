@@ -14,7 +14,7 @@ class FileRepo:
         self._session.add(stored_file)
 
     async def list_for_owner(
-        self, *, owner_id: UUID, folder_id: UUID | None
+        self, owner_id: UUID, folder_id: UUID | None
     ) -> list[StoredFile]:
         folder_condition = (
             StoredFile.folder_id.is_(None)
