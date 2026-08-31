@@ -20,7 +20,7 @@ class StoredFile(Base):
         ForeignKey("folders.id", ondelete="SET NULL"), index=True, nullable=True
     )
 
-    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
 
     storage_key: Mapped[str] = mapped_column(
         String(512), unique=True, index=True, nullable=False

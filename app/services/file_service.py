@@ -44,7 +44,7 @@ class FileService:
     async def upload_file(
         self, *, owner_id: UUID, folder_id: UUID | None, upload: UploadFile
     ) -> StoredFile:
-        original_filename = self._sanitize_filename(upload.filename)
+        name = self._sanitize_filename(upload.filename)
 
         if folder_id is not None:
             folder = await self._folders.get_for_owner(folder_id, owner_id)
@@ -76,7 +76,7 @@ class FileService:
                 id=file_id,
                 owner_id=owner_id,
                 folder_id=folder_id,
-                original_filename=original_filename,
+                name=name,
                 storage_key=storage_key,
                 content_type=upload.content_type,
                 size_bytes=size_bytes,

@@ -105,7 +105,7 @@ async def download_file(
     return FileResponse(
         path=path,
         media_type=stored_file.content_type,
-        filename=stored_file.original_filename,
+        filename=stored_file.name,
     )
 
 

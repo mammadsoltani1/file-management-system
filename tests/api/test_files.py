@@ -21,7 +21,7 @@ def test_upload_file(client: TestClient, auth_headers: dict[str, str]) -> None:
 
     assert response.status_code == 201
     body = response.json()
-    assert body["original_filename"] == "hello.txt"
+    assert body["name"] == "hello.txt"
     assert body["size_bytes"] == len(content)
     assert body["sha256"] == hashlib.sha256(content).hexdigest()
     assert body["content_type"] == "text/plain"
@@ -75,7 +75,7 @@ def test_upload_sanitizes_path_traversal_in_filename(
     response = _upload(client, auth_headers, filename="../../etc/passwd")
 
     assert response.status_code == 201
-    assert response.json()["original_filename"] == "passwd"
+    assert response.json()["name"] == "passwd"
 
 
 def test_list_directory_returns_folders_and_files(
@@ -89,7 +89,7 @@ def test_list_directory_returns_folders_and_files(
     assert response.status_code == 200
     body = response.json()
     assert [f["name"] for f in body["folders"]] == ["Photos"]
-    assert [f["original_filename"] for f in body["files"]] == ["a.txt"]
+    assert [f["name"] for f in body["files"]] == ["a.txt"]
 
 
 def test_download_file(client: TestClient, auth_headers: dict[str, str]) -> None:

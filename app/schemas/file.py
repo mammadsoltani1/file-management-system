@@ -10,7 +10,7 @@ class FilePublic(BaseModel):
     id: UUID
     owner_id: UUID
     folder_id: UUID | None
-    original_filename: str
+    name: str
     content_type: str | None
     size_bytes: int
     sha256: str | None

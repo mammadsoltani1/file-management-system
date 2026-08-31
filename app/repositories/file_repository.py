@@ -25,7 +25,7 @@ class FileRepo:
         statement = (
             select(StoredFile)
             .where(StoredFile.owner_id == owner_id, folder_condition)
-            .order_by(StoredFile.original_filename.asc())
+            .order_by(StoredFile.name.asc())
         )
 
         result = await self._session.scalars(statement)
