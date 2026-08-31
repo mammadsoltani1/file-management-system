@@ -30,3 +30,11 @@ class FileRepo:
 
         result = await self._session.scalars(statement)
         return list(result.all())
+
+    async def get_for_owner(self, file_id: UUID, owner_id: UUID) -> StoredFile | None:
+        statement = select(StoredFile).where(
+            StoredFile.id == file_id, StoredFile.owner_id == owner_id
+        )
+
+        result = await self._session.scalars(statement)
+        return result.one_or_none()
