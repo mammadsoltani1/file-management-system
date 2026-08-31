@@ -26,6 +26,14 @@ class InvalidFilenameError(Exception):
     """raised when an uploaded filename is unavailable or unsafe"""
 
 
+class StoredFileNotFoundError(Exception):
+    """raised when a file does not exist or is not owned by the user"""
+
+
+class StoredFileContentMissingError(Exception):
+    """raised when the files metadata exists but its physical content is missing"""
+
+
 class FileService:
     def __init__(self, session: AsyncSession, storage: StorageProvider) -> None:
         self._session = session
@@ -118,3 +126,18 @@ class FileService:
         files = await self._files.list_for_owner(owner_id, folder_id)
 
         return folders, files
+
+    async def get_download_file(
+        self, owner_id: UUID, file_id: UUID
+    ) -> tuple[StoredFile, Path]:
+        stored_file = await self._files.get_for_owner(
+            file_id=file_id, owner_id=owner_id
+        )
+
+        if stored_file is None:
+            raise StoredFileNotFoundError
+        if not await self._storage.exists(stored_file.storage_key):
+            raise StoredFileContentMissingError
+
+        path = await self._storage.get_path(stored_file.storage_key)
+        return stored_file, path

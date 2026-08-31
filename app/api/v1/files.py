@@ -2,6 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 
 from app.api.deps import get_current_user, get_file_service
 from app.models.user import User
@@ -11,6 +12,8 @@ from app.services.file_service import (
     FileService,
     FileTooLargeError,
     InvalidFilenameError,
+    StoredFileContentMissingError,
+    StoredFileNotFoundError,
     UploadFolderNotFoundError,
 )
 
@@ -65,3 +68,33 @@ async def list_directory(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="the requested folder was not found",
         ) from err
+
+
+@router.get("/{file_id}/download")
+async def download_file(
+    file_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    file_service: Annotated[FileService, Depends(get_file_service)],
+) -> FileResponse:
+    try:
+        stored_file, path = await file_service.get_download_file(
+            owner_id=current_user.id, file_id=file_id
+        )
+
+    except StoredFileNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="the requested file was not found",
+        ) from err
+
+    except StoredFileContentMissingError as err:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="the file record exists, but its stored content is unavailable",
+        ) from err
+
+    return FileResponse(
+        path=path,
+        media_type=stored_file.content_type,
+        filename=stored_file.original_filename,
+    )
