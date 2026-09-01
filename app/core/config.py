@@ -20,5 +20,8 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_COOKIE_SAMESITE: str
     REFRESH_TOKEN_COOKIE_PATH: str
 
+    EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES: int
+    EMAIL_VERIFICATION_FRONTEND_URL: str
+
 
 settings = Settings()
