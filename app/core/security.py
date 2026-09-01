@@ -1,3 +1,5 @@
+import hmac
+import secrets
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -23,3 +25,15 @@ def create_access_token(subject: str) -> str:
     payload = {"sub": subject, "exp": expires_at}
 
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def generate_refresh_token() -> str:
+    """generates a secure random refresh token."""
+    return secrets.token_urlsafe(48)
+
+
+def hash_refresh_token(token: str) -> str:
+    """hashes the refresh token using hmac with the application's secret key."""
+    return hmac.new(
+        key=settings.SECRET_KEY.encode(), msg=token.encode(), digestmod="sha256"
+    ).hexdigest()
