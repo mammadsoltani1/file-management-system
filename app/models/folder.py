@@ -32,3 +32,11 @@ class Folder(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None, index=True
+    )
+
+    trash_batch_id: Mapped[UUID | None] = mapped_column(
+        nullable=True, index=True, default=None
+    )
