@@ -56,6 +56,12 @@ async def upload_file(
             detail="the uploaded filename is invalid",
         ) from err
 
+    except FilenameAlreadyExistsError as err:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="a file with the same name already exists in this folder",
+        ) from err
+
     except FileTooLargeError as err:
         raise HTTPException(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,

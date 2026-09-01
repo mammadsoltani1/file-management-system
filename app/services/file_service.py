@@ -51,7 +51,7 @@ class FileService:
         self._folders = FolderRepo(session)
 
     async def upload_file(
-        self, *, owner_id: UUID, folder_id: UUID | None, upload: UploadFile
+        self, owner_id: UUID, folder_id: UUID | None, upload: UploadFile
     ) -> StoredFile:
         name = self._sanitize_filename(upload.filename)
 
@@ -60,6 +60,10 @@ class FileService:
 
             if folder is None:
                 raise UploadFolderNotFoundError
+
+        if await self._files.exists_with_name(owner_id, folder_id, name):
+            raise FilenameAlreadyExistsError
+
         file_id = uuid4()
         storage_key = f"users/{owner_id}/files/{file_id}"
         content_hash = hashlib.sha256()
@@ -175,7 +179,7 @@ class FileService:
 
         name = self._sanitize_filename(payload.name)
 
-        # check if a file with the new name already exists in the same folder
+        #check if a file with the new name already exists in the same folder
         if await self._files.exists_with_name(
             owner_id, stored_file.folder_id, name, exclude_file_id=file_id
         ):
