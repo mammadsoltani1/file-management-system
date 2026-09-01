@@ -35,5 +35,18 @@ def generate_refresh_token() -> str:
 def hash_refresh_token(token: str) -> str:
     """hashes the refresh token using hmac with the application's secret key."""
     return hmac.new(
-        key=settings.SECRET_KEY.encode(), msg=token.encode(), digestmod="sha256"
+        key=settings.SECRET_KEY.encode("utf-8"),
+        msg=token.encode("utf-8"),
+        digestmod="sha256",
+    ).hexdigest()
+
+
+def hash_email_verification_token(token: str) -> str:
+    """hash verification tokens separately from refresh tokens"""
+    payload = f"email-verification: {token}"
+
+    return hmac.new(
+        key=settings.SECRET_KEY.encode("utf-8"),
+        msg=payload.encode("utf-8"),
+        digestmod="sha256",
     ).hexdigest()
