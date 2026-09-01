@@ -12,6 +12,7 @@ from app.db.session import get_db_session
 from app.models.user import User
 from app.services.file_service import FileService
 from app.services.folder_service import FolderService
+from app.services.trash_service import TrashService
 from app.storage.base import StorageProvider
 from app.storage.dependencies import get_storage_provider
 
@@ -56,3 +57,10 @@ def get_file_service(
     storage: Annotated[StorageProvider, Depends(get_storage_provider)],
 ) -> FileService:
     return FileService(session=session, storage=storage)
+
+
+def get_trash_service(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    storage: Annotated[StorageProvider, Depends(get_storage_provider)],
+) -> TrashService:
+    return TrashService(session=session, storage=storage)
