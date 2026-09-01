@@ -58,3 +58,28 @@ class FileRepo:
 
         result = await self._session.scalars(statement)
         return list(result.all())
+
+    async def exists_with_name(
+        self,
+        owner_id: UUID,
+        folder_id: UUID | None,
+        name: str,
+        exclude_file_id: UUID | None = None,
+    ) -> bool:
+        folder_condition = (
+            StoredFile.folder_id.is_(None)
+            if folder_id is None
+            else StoredFile.folder_id == folder_id
+        )
+
+        statement = select(StoredFile).where(
+            StoredFile.owner_id == owner_id,
+            folder_condition,
+            StoredFile.name == name,
+        )
+
+        if exclude_file_id is not None:
+            statement = statement.where(StoredFile.id != exclude_file_id)
+
+        result = await self._session.scalars(statement)
+        return result.first() is not None

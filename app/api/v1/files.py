@@ -18,6 +18,10 @@ from app.models.user import User
 from app.schemas.directory import DirectoryListing
 from app.schemas.file import FilePublic
 from app.services.file_service import (
+    DestinationFolderNotFoundError,
+    FileMove,
+    FilenameAlreadyExistsError,
+    FileRename,
     FileService,
     FileTooLargeError,
     InvalidFilenameError,
@@ -125,3 +129,65 @@ async def delete_file(
         ) from err
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch("/{file_id}/rename", response_model=FilePublic)
+async def rename_file(
+    file_id: UUID,
+    payload: FileRename,
+    current_user: Annotated[User, Depends(get_current_user)],
+    file_service: Annotated[FileService, Depends(get_file_service)],
+) -> FilePublic:
+    try:
+        return await file_service.rename_file(
+            owner_id=current_user.id, file_id=file_id, payload=payload
+        )
+
+    except StoredFileNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="the requested file was not found",
+        ) from err
+
+    except InvalidFilenameError as err:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="the uploaded filename is invalid",
+        ) from err
+
+    except FilenameAlreadyExistsError as err:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="a file with the same name already exists in this target folder",
+        ) from err
+
+
+@router.patch("/{file_id}/move", response_model=FilePublic)
+async def move_file(
+    file_id: UUID,
+    payload: FileMove,
+    current_user: Annotated[User, Depends(get_current_user)],
+    file_service: Annotated[FileService, Depends(get_file_service)],
+) -> FilePublic:
+    try:
+        return await file_service.move_file(
+            owner_id=current_user.id, file_id=file_id, payload=payload
+        )
+
+    except StoredFileNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="the requested file was not found",
+        ) from err
+
+    except DestinationFolderNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="the destination folder was not found",
+        ) from err
+
+    except FilenameAlreadyExistsError as err:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="a file with the same name already exists in this target folder",
+        ) from err

@@ -11,6 +11,7 @@ from app.models.folder import Folder
 from app.models.stored_file import StoredFile
 from app.repositories.file_repository import FileRepo
 from app.repositories.folder_repository import FolderRepo
+from app.schemas.file import FileMove, FileRename
 from app.storage.base import StorageProvider
 
 
@@ -32,6 +33,14 @@ class StoredFileNotFoundError(Exception):
 
 class StoredFileContentMissingError(Exception):
     """raised when the files metadata exists but its physical content is missing"""
+
+
+class DestinationFolderNotFoundError(Exception):
+    """raised when a file move target folder is unavailable to the user"""
+
+
+class FilenameAlreadyExistsError(Exception):
+    """raised when a file with the same name already exists in the target folder"""
 
 
 class FileService:
@@ -153,3 +162,59 @@ class FileService:
         await self._storage.delete(stored_file.storage_key)
         await self._files.delete(stored_file)
         await self._session.commit()
+
+    async def rename_file(
+        self, owner_id: UUID, file_id: UUID, payload: FileRename
+    ) -> StoredFile:
+        stored_file = await self._files.get_for_owner(
+            file_id=file_id, owner_id=owner_id
+        )
+
+        if stored_file is None:
+            raise StoredFileNotFoundError
+
+        name = self._sanitize_filename(payload.name)
+
+        # check if a file with the new name already exists in the same folder
+        if await self._files.exists_with_name(
+            owner_id, stored_file.folder_id, name, exclude_file_id=file_id
+        ):
+            raise FilenameAlreadyExistsError
+
+        stored_file.name = name
+        await self._session.commit()
+        await self._session.refresh(stored_file)
+        return stored_file
+
+    async def move_file(
+        self, owner_id: UUID, file_id: UUID, payload: FileMove
+    ) -> StoredFile:
+        stored_file = await self._files.get_for_owner(
+            file_id=file_id, owner_id=owner_id
+        )
+
+        if stored_file is None:
+            raise StoredFileNotFoundError
+
+        destination_folder_id = payload.folder_id
+        if destination_folder_id is not None:
+            destination_folder = await self._folders.get_for_owner(
+                folder_id=destination_folder_id, owner_id=owner_id
+            )
+            if destination_folder is None:
+                raise DestinationFolderNotFoundError
+
+        duplicate_exists = await self._files.exists_with_name(
+            owner_id=owner_id,
+            folder_id=destination_folder_id,
+            name=stored_file.name,
+            exclude_file_id=file_id,
+        )
+
+        if duplicate_exists:
+            raise FilenameAlreadyExistsError
+
+        stored_file.folder_id = destination_folder_id
+        await self._session.commit()
+        await self._session.refresh(stored_file)
+        return stored_file
