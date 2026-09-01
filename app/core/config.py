@@ -14,5 +14,11 @@ class Settings(BaseSettings):
     LOCAL_STORAGE_PATH: str
     MAX_UPLOAD_SIZE_BYTES: int
 
+    REFRESH_TOKEN_EXPIRE_DAYS: int
+    REFRESH_TOKEN_COOKIE_NAME: str
+    REFRESH_TOKEN_COOKIE_SECURE: bool
+    REFRESH_TOKEN_COOKIE_SAMESITE: str
+    REFRESH_TOKEN_COOKIE_PATH: str
+
 
 settings = Settings()
