@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.stored_file import StoredFile
@@ -83,3 +83,42 @@ class FileRepo:
 
         result = await self._session.scalars(statement)
         return result.first() is not None
+
+    async def count_for_folder(self, owner_id: UUID, folder_id: UUID | None) -> int:
+        folder_condition = (
+            StoredFile.folder_id.is_(None)
+            if folder_id is None
+            else StoredFile.folder_id == folder_id
+        )
+
+        statement = (
+            select(func.count())
+            .select_from(StoredFile)
+            .where(StoredFile.owner_id == owner_id, folder_condition)
+        )
+
+        result = await self._session.scalar(statement)
+        return int(result) if result is not None else 0
+
+    async def list_for_folder_page(
+        self, folder_id: UUID | None, owner_id: UUID, offset: int, limit: int
+    ) -> list[StoredFile]:
+        if limit <= 0:
+            return []
+
+        folder_condition = (
+            StoredFile.folder_id.is_(None)
+            if folder_id is None
+            else StoredFile.folder_id == folder_id
+        )
+
+        statement = (
+            select(StoredFile)
+            .where(StoredFile.owner_id == owner_id, folder_condition)
+            .order_by(StoredFile.name.asc(), StoredFile.id.asc())
+            .offset(offset)
+            .limit(limit)
+        )
+
+        result = await self._session.scalars(statement)
+        return list(result.all())

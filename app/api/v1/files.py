@@ -7,6 +7,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Query,
     Response,
     UploadFile,
     status,
@@ -74,19 +75,34 @@ async def list_directory(
     current_user: Annotated[User, Depends(get_current_user)],
     file_service: Annotated[FileService, Depends(get_file_service)],
     folder_id: UUID | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
 ) -> DirectoryListing:
     try:
-        folders, files = await file_service.list_directory(
-            owner_id=current_user.id, folder_id=folder_id
+        folders, files, total_items = await file_service.list_directory(
+            owner_id=current_user.id,
+            folder_id=folder_id,
+            page=page,
+            page_size=page_size,
         )
-
-        return DirectoryListing(folder_id=folder_id, folders=folders, files=files)
 
     except UploadFolderNotFoundError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="the requested folder was not found",
         ) from err
+
+    total_pages = (total_items + page_size - 1) // page_size if total_items > 0 else 0
+
+    return DirectoryListing(
+        folder_id=folder_id,
+        folders=folders,
+        files=files,
+        page=page,
+        page_size=page_size,
+        total_items=total_items,
+        total_pages=total_pages,
+    )
 
 
 @router.get("/{file_id}/download")

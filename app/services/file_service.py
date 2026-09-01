@@ -127,18 +127,51 @@ class FileService:
         return safe_filename
 
     async def list_directory(
-        self, *, owner_id: UUID, folder_id: UUID | None
-    ) -> tuple[list[Folder], list[StoredFile]]:
+        self, *, owner_id: UUID, folder_id: UUID | None, page: int, page_size: int
+    ) -> tuple[list[Folder], list[StoredFile], int]:
         # a null folder id means the user's root page
         if folder_id is not None:
             folder = await self._folders.get_for_owner(folder_id, owner_id)
             if folder is None:
                 raise UploadFolderNotFoundError
 
-        folders = await self._folders.list_for_owner(owner_id, folder_id)
-        files = await self._files.list_for_owner(owner_id, folder_id)
+        folder_cnt = await self._folders.count_for_parent(
+            owner_id=owner_id, parent_id=folder_id
+        )
+        file_cnt = await self._files.count_for_folder(
+            owner_id=owner_id, folder_id=folder_id
+        )
 
-        return folders, files
+        total_items = folder_cnt + file_cnt
+        offset = (page - 1) * page_size
+
+        # directory ordering: folders first, then files, both sorted by name ascending
+        if offset < folder_cnt:
+            folders = await self._folders.list_for_parent_page(
+                owner_id=owner_id, parent_id=folder_id, offset=offset, limit=page_size
+            )
+            remaining_limit = page_size - len(folders)
+            if remaining_limit > 0:
+                files = await self._files.list_for_folder_page(
+                    folder_id=folder_id,
+                    owner_id=owner_id,
+                    offset=0,
+                    limit=remaining_limit,
+                )
+            else:
+                files = []
+
+        else:
+            folders = []
+            file_offset = offset - folder_cnt
+            files = await self._files.list_for_folder_page(
+                folder_id=folder_id,
+                owner_id=owner_id,
+                offset=file_offset,
+                limit=page_size,
+            )
+
+        return folders, files, total_items
 
     async def get_download_file(
         self, owner_id: UUID, file_id: UUID

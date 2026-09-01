@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.folder import Folder
@@ -75,3 +75,42 @@ class FolderRepo:
 
     async def delete(self, folder: Folder) -> None:
         await self._session.delete(folder)
+
+    async def count_for_parent(self, owner_id: UUID, parent_id: UUID | None) -> int:
+        parent_condition = (
+            Folder.parent_id.is_(None)
+            if parent_id is None
+            else Folder.parent_id == parent_id
+        )
+
+        statement = (
+            select(func.count())
+            .select_from(Folder)
+            .where(Folder.owner_id == owner_id, parent_condition)
+        )
+
+        result = await self._session.scalar(statement)
+        return int(result) if result is not None else 0
+
+    async def list_for_parent_page(
+        self, owner_id: UUID, parent_id: UUID | None, offset: int, limit: int
+    ) -> list[Folder]:
+        if limit <= 0:
+            return []
+
+        parent_condition = (
+            Folder.parent_id.is_(None)
+            if parent_id is None
+            else Folder.parent_id == parent_id
+        )
+
+        statement = (
+            select(Folder)
+            .where(Folder.owner_id == owner_id, parent_condition)
+            .order_by(Folder.name.asc(), Folder.id.asc())
+            .offset(offset)
+            .limit(limit)
+        )
+
+        result = await self._session.scalars(statement)
+        return list(result.all())
