@@ -1,5 +1,6 @@
 import hashlib
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -196,9 +197,11 @@ class FileService:
         if stored_file is None:
             raise StoredFileNotFoundError
 
-        await self._storage.delete(stored_file.storage_key)
-        await self._files.delete(stored_file)
+        stored_file.deleted_at = datetime.now(UTC)
+        stored_file.trash_batch_id = uuid4()
+
         await self._session.commit()
+        await self._session.refresh(stored_file)
 
     async def rename_file(
         self, owner_id: UUID, file_id: UUID, payload: FileRename

@@ -1,4 +1,5 @@
-from uuid import UUID
+from datetime import UTC, datetime
+from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -86,6 +87,9 @@ class FolderService:
         if not recursive and (child_folders or direct_files):
             raise FolderNotEmptyError
 
+        deleted_at = datetime.now(UTC)
+        trash_batch_id = uuid4()
+
         folders_to_delete = await self._collect_folder_tree(
             owner_id=owner_id, root_folder=folder
         )
@@ -94,21 +98,16 @@ class FolderService:
             owner_id=owner_id, folder_ids=folder_ids
         )
 
-        try:
-            for stored_file in files_to_delete:
-                await self._storage.delete(stored_file.storage_key)
+        for item in folders_to_delete:
+            item.deleted_at = deleted_at
+            item.trash_batch_id = trash_batch_id
 
-            for stored_file in files_to_delete:
-                await self._files.delete(stored_file)
+        for item in files_to_delete:
+            item.deleted_at = deleted_at
+            item.trash_batch_id = trash_batch_id
 
-            for item in reversed(folders_to_delete):
-                await self._folders.delete(item)
-
-            await self._session.commit()
-
-        except Exception:
-            await self._session.rollback()
-            raise
+        await self._session.commit()
+        await self._session.refresh(folder)
 
     async def rename_folder(
         self, owner_id: UUID, folder_id: UUID, payload: FolderRename
