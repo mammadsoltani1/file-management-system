@@ -24,7 +24,11 @@ class FileRepo:
 
         statement = (
             select(StoredFile)
-            .where(StoredFile.owner_id == owner_id, folder_condition)
+            .where(
+                StoredFile.owner_id == owner_id,
+                folder_condition,
+                StoredFile.deleted_at.is_(None),
+            )
             .order_by(StoredFile.name.asc())
         )
 
@@ -33,7 +37,9 @@ class FileRepo:
 
     async def get_for_owner(self, file_id: UUID, owner_id: UUID) -> StoredFile | None:
         statement = select(StoredFile).where(
-            StoredFile.id == file_id, StoredFile.owner_id == owner_id
+            StoredFile.id == file_id,
+            StoredFile.owner_id == owner_id,
+            StoredFile.deleted_at.is_(None),
         )
 
         result = await self._session.scalars(statement)
@@ -51,7 +57,9 @@ class FileRepo:
         statement = (
             select(StoredFile)
             .where(
-                StoredFile.owner_id == owner_id, StoredFile.folder_id.in_(folder_ids)
+                StoredFile.owner_id == owner_id,
+                StoredFile.folder_id.in_(folder_ids),
+                StoredFile.deleted_at.is_(None),
             )
             .order_by(StoredFile.created_at.asc())
         )
@@ -76,6 +84,7 @@ class FileRepo:
             StoredFile.owner_id == owner_id,
             folder_condition,
             StoredFile.name == name,
+            StoredFile.deleted_at.is_(None),
         )
 
         if exclude_file_id is not None:
@@ -94,7 +103,11 @@ class FileRepo:
         statement = (
             select(func.count())
             .select_from(StoredFile)
-            .where(StoredFile.owner_id == owner_id, folder_condition)
+            .where(
+                StoredFile.owner_id == owner_id,
+                folder_condition,
+                StoredFile.deleted_at.is_(None),
+            )
         )
 
         result = await self._session.scalar(statement)
@@ -114,10 +127,43 @@ class FileRepo:
 
         statement = (
             select(StoredFile)
-            .where(StoredFile.owner_id == owner_id, folder_condition)
+            .where(
+                StoredFile.owner_id == owner_id,
+                folder_condition,
+                StoredFile.deleted_at.is_(None),
+            )
             .order_by(StoredFile.name.asc(), StoredFile.id.asc())
             .offset(offset)
             .limit(limit)
+        )
+
+        result = await self._session.scalars(statement)
+        return list(result.all())
+
+    async def get_by_id(self, file_id: UUID, owner_id: UUID) -> StoredFile | None:
+        """fetch a file regardless of trash status"""
+        statement = select(StoredFile).where(
+            StoredFile.id == file_id, StoredFile.owner_id == owner_id
+        )
+
+        result = await self._session.scalars(statement)
+        return result.one_or_none()
+
+    async def list_trashed(self, owner_id: UUID) -> list[StoredFile]:
+        statement = (
+            select(StoredFile)
+            .where(StoredFile.owner_id == owner_id, StoredFile.deleted_at.is_not(None))
+            .order_by(StoredFile.deleted_at.desc())
+        )
+
+        result = await self._session.scalars(statement)
+        return list(result.all())
+
+    async def list_for_trash_batch(
+        self, owner_id: UUID, trash_batch_id: UUID
+    ) -> list[StoredFile]:
+        statement = select(StoredFile).where(
+            StoredFile.owner_id == owner_id, StoredFile.trash_batch_id == trash_batch_id
         )
 
         result = await self._session.scalars(statement)

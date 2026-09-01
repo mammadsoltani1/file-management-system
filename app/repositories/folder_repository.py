@@ -12,7 +12,9 @@ class FolderRepo:
 
     async def get_for_owner(self, folder_id: UUID, owner_id: UUID) -> Folder | None:
         statement = select(Folder).where(
-            Folder.id == folder_id, Folder.owner_id == owner_id
+            Folder.id == folder_id,
+            Folder.owner_id == owner_id,
+            Folder.deleted_at.is_(None),
         )
 
         result = await self._session.execute(statement)
@@ -27,10 +29,17 @@ class FolderRepo:
         name: str,
         exclude_folder_id: UUID | None = None,
     ) -> bool:
+        parent_condition = (
+            Folder.parent_id.is_(None)
+            if parent_id is None
+            else Folder.parent_id == parent_id
+        )
+
         statement = select(Folder).where(
             Folder.owner_id == owner_id,
-            Folder.parent_id == parent_id,
+            parent_condition,
             Folder.name == name,
+            Folder.deleted_at.is_(None),
         )
 
         if exclude_folder_id is not None:
@@ -42,10 +51,20 @@ class FolderRepo:
     async def list_for_parent(
         self, *, owner_id: UUID, parent_id: UUID | None
     ) -> list[Folder]:
+        parent_condition = (
+            Folder.parent_id.is_(None)
+            if parent_id is None
+            else Folder.parent_id == parent_id
+        )
+
         statement = (
             select(Folder)
-            .where(Folder.owner_id == owner_id, Folder.parent_id == parent_id)
-            .order_by(Folder.name)
+            .where(
+                Folder.owner_id == owner_id,
+                parent_condition,
+                Folder.deleted_at.is_(None),
+            )
+            .order_by(Folder.name.asc(), Folder.id.asc())
         )
 
         result = await self._session.execute(statement)
@@ -66,8 +85,12 @@ class FolderRepo:
 
         statement = (
             select(Folder)
-            .where(Folder.owner_id == owner_id, parent_condition)
-            .order_by(Folder.name.asc())
+            .where(
+                Folder.owner_id == owner_id,
+                parent_condition,
+                Folder.deleted_at.is_(None),
+            )
+            .order_by(Folder.name.asc(), Folder.id.asc())
         )
 
         result = await self._session.scalars(statement)
@@ -86,7 +109,11 @@ class FolderRepo:
         statement = (
             select(func.count())
             .select_from(Folder)
-            .where(Folder.owner_id == owner_id, parent_condition)
+            .where(
+                Folder.owner_id == owner_id,
+                parent_condition,
+                Folder.deleted_at.is_(None),
+            )
         )
 
         result = await self._session.scalar(statement)
@@ -106,10 +133,43 @@ class FolderRepo:
 
         statement = (
             select(Folder)
-            .where(Folder.owner_id == owner_id, parent_condition)
+            .where(
+                Folder.owner_id == owner_id,
+                parent_condition,
+                Folder.deleted_at.is_(None),
+            )
             .order_by(Folder.name.asc(), Folder.id.asc())
             .offset(offset)
             .limit(limit)
+        )
+
+        result = await self._session.scalars(statement)
+        return list(result.all())
+
+    async def get_by_id(self, folder_id: UUID, owner_id: UUID) -> Folder | None:
+        """fetch a folder regardless of trash status"""
+        statement = select(Folder).where(
+            Folder.id == folder_id, Folder.owner_id == owner_id
+        )
+
+        result = await self._session.execute(statement)
+        return result.scalar_one_or_none()
+
+    async def list_trashed(self, owner_id: UUID) -> list[Folder]:
+        statement = (
+            select(Folder)
+            .where(Folder.owner_id == owner_id, Folder.deleted_at.is_not(None))
+            .order_by(Folder.deleted_at.desc())
+        )
+
+        result = await self._session.scalars(statement)
+        return list(result.all())
+
+    async def list_for_trash_batch(
+        self, owner_id: UUID, trash_batch_id: UUID
+    ) -> list[Folder]:
+        statement = select(Folder).where(
+            Folder.owner_id == owner_id, Folder.trash_batch_id == trash_batch_id
         )
 
         result = await self._session.scalars(statement)
