@@ -99,7 +99,7 @@ def test_purge_permanently_removes_file(
 ) -> None:
     uploaded = _upload(client, auth_headers)
     client.delete(f"/api/v1/files/{uploaded['id']}", headers=auth_headers)
-
+ 
     trash = client.get("/api/v1/trash", headers=auth_headers).json()
     batch_id = trash["files"][0]["trash_batch_id"]
 
