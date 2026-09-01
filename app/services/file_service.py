@@ -179,7 +179,7 @@ class FileService:
 
         name = self._sanitize_filename(payload.name)
 
-        #check if a file with the new name already exists in the same folder
+        # check if a file with the new name already exists in the same folder
         if await self._files.exists_with_name(
             owner_id, stored_file.folder_id, name, exclude_file_id=file_id
         ):

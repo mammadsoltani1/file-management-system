@@ -69,6 +69,29 @@ def test_upload_too_large_is_rejected(
     assert response.status_code == 413
 
 
+def test_upload_duplicate_name_in_same_folder_conflicts(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    _upload(client, auth_headers, filename="dup.txt")
+
+    response = _upload(client, auth_headers, filename="dup.txt")
+
+    assert response.status_code == 409
+
+
+def test_upload_same_name_in_different_folders_is_allowed(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    _upload(client, auth_headers, filename="dup.txt")
+    folder = client.post(
+        "/api/v1/folders", json={"name": "Docs"}, headers=auth_headers
+    ).json()
+
+    response = _upload(client, auth_headers, filename="dup.txt", folder_id=folder["id"])
+
+    assert response.status_code == 201
+
+
 def test_upload_sanitizes_path_traversal_in_filename(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
