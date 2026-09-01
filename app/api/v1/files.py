@@ -46,7 +46,6 @@ async def upload_file(
         )
 
     except UploadFolderNotFoundError as err:
-        
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="upload folder was not found"
         ) from err
