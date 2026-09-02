@@ -182,3 +182,96 @@ def test_delete_missing_file(client: TestClient, auth_headers: dict[str, str]) -
     response = client.delete(f"/api/v1/files/{uuid.uuid4()}", headers=auth_headers)
 
     assert response.status_code == 404
+
+
+def test_copy_file(client: TestClient, auth_headers: dict[str, str]) -> None:
+    content = b"hello world"
+    original = _upload(client, auth_headers, content=content).json()
+    folder = client.post(
+        "/api/v1/folders", json={"name": "Dest"}, headers=auth_headers
+    ).json()
+
+    response = client.post(
+        f"/api/v1/files/{original['id']}/copy",
+        json={"folder_id": folder["id"]},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 201
+    copied = response.json()
+    assert copied["id"] != original["id"]
+    assert copied["name"] == original["name"]
+    assert copied["sha256"] == original["sha256"]
+    assert copied["folder_id"] == folder["id"]
+
+    download = client.get(
+        f"/api/v1/files/{copied['id']}/download", headers=auth_headers
+    )
+    assert download.content == content
+
+
+def test_copy_is_independent_of_the_original(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    original = _upload(client, auth_headers).json()
+    folder = client.post(
+        "/api/v1/folders", json={"name": "Dest"}, headers=auth_headers
+    ).json()
+    copied = client.post(
+        f"/api/v1/files/{original['id']}/copy",
+        json={"folder_id": folder["id"]},
+        headers=auth_headers,
+    ).json()
+
+    client.delete(f"/api/v1/files/{original['id']}", headers=auth_headers)
+
+    response = client.get(
+        f"/api/v1/files/{copied['id']}/download", headers=auth_headers
+    )
+    assert response.status_code == 200
+
+
+def test_copy_missing_file(client: TestClient, auth_headers: dict[str, str]) -> None:
+    response = client.post(
+        f"/api/v1/files/{uuid.uuid4()}/copy",
+        json={"folder_id": None},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 404
+
+
+def test_copy_into_missing_folder(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    original = _upload(client, auth_headers).json()
+
+    response = client.post(
+        f"/api/v1/files/{original['id']}/copy",
+        json={"folder_id": str(uuid.uuid4())},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 404
+
+
+def test_copy_duplicate_name_at_destination_conflicts(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    original = _upload(client, auth_headers, filename="dup.txt").json()
+
+    response = client.post(
+        f"/api/v1/files/{original['id']}/copy",
+        json={"folder_id": None},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 409
+
+
+def test_copy_requires_auth(client: TestClient) -> None:
+    response = client.post(
+        f"/api/v1/files/{uuid.uuid4()}/copy", json={"folder_id": None}
+    )
+
+    assert response.status_code == 401
