@@ -56,3 +56,23 @@ class LocalStorageProvider(StorageProvider):
     async def exists(self, key: str) -> bool:
         path = self._resolve_key(key)
         return await anyio.to_thread.run_sync(path.is_file)
+
+    async def copy(self, source_key: str, destination_key: str) -> None:
+        source = self._resolve_key(source_key)
+        destination = self._resolve_key(destination_key)
+
+        if not await anyio.to_thread.run_sync(source.is_file):
+            raise FileNotFoundError(source_key)
+
+        await anyio.to_thread.run_sync(
+            lambda: destination.parent.mkdir(parents=True, exist_ok=True)
+        )
+
+        try:
+            await anyio.to_thread.run_sync(
+                lambda: destination.write_bytes(source.read_bytes())
+            )
+
+        except Exception:
+            await self.delete(destination_key)
+            raise

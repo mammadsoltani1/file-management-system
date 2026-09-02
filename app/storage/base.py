@@ -17,3 +17,6 @@ class StorageProvider(Protocol):
 
     async def exists(self, key: str) -> bool:
         """return wether a stored file exists"""
+
+    async def copy(self, source_key: str, destination_key: str) -> None:
+        """copy stored content to a new storage key"""
