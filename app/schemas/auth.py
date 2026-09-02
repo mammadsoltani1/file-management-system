@@ -9,3 +9,11 @@ class UserRegister(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class EmailVerificationConfirm(BaseModel):
+    token: str = Field(min_length=32, max_length=512)
+
+
+class EmailVerificationStatus(BaseModel):
+    verified: bool
