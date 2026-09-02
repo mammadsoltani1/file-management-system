@@ -1,8 +1,11 @@
+import logging
 from urllib.parse import urlencode
 
 import httpx
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class EmailDeliveryUnavailableError(Exception):
@@ -76,11 +79,22 @@ class EmailService:
                 )
                 res.raise_for_status()
         except httpx.HTTPStatusError as err:
+            logger.error(
+                "resend rejected verification email for %s: %s %s",
+                recipient,
+                err.response.status_code,
+                err.response.text,
+            )
             raise EmailDeliveryUnavailableError(
                 "email provider rejected the verification email"
             ) from err
 
         except httpx.RequestError as err:
+            logger.error(
+                "could not reach resend for verification email to %s: %s",
+                recipient,
+                err,
+            )
             raise EmailDeliveryUnavailableError(
                 "could not reach the email provider"
             ) from err
