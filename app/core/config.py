@@ -22,6 +22,11 @@ class Settings(BaseSettings):
 
     EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES: int
     EMAIL_VERIFICATION_FRONTEND_URL: str
+    RESEND_API_URL: str
+    RESEND_API_KEY: str
+    EMAIL_FROM_ADDRESS: str
+    EMAIL_FROM_NAME: str
+    EMAIL_TIMEOUT_SECONDS: int
 
 
 settings = Settings()
