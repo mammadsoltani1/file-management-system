@@ -23,5 +23,10 @@ class FileRename(BaseModel):
 
 
 class FileMove(BaseModel):
-    # UUID to move into a specific folder or None to move to root
+    # uuid to move into a specific folder or None to move to root
+    folder_id: UUID | None
+
+
+class FileCopy(BaseModel):
+    # uuid to copy into a specific folder or None to copy to root
     folder_id: UUID | None

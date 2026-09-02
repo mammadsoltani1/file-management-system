@@ -19,7 +19,9 @@ from app.models.user import User
 from app.schemas.directory import DirectoryListing
 from app.schemas.file import FilePublic
 from app.services.file_service import (
+    CopyDestinationFolderNotFound,
     DestinationFolderNotFoundError,
+    FileCopy,
     FileMove,
     FilenameAlreadyExistsError,
     FileRename,
@@ -212,4 +214,39 @@ async def move_file(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="a file with the same name already exists in this target folder",
+        ) from err
+
+
+@router.post(
+    "/{file_id}/copy", response_model=FilePublic, status_code=status.HTTP_201_CREATED
+)
+async def copy_file(
+    file_id: UUID,
+    payload: FileCopy,
+    current_user: Annotated[User, Depends(get_current_user)],
+    file_service: Annotated[FileService, Depends(get_file_service)],
+) -> FilePublic:
+    try:
+        return await file_service.copy_file(
+            owner_id=current_user.id, file_id=file_id, payload=payload
+        )
+    except StoredFileNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="the requested file was not found",
+        ) from err
+    except CopyDestinationFolderNotFound as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="the destination folder was not found",
+        ) from err
+    except StoredFileContentMissingError as err:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="the file record exists but its stored content is unavailable",
+        ) from err
+    except FilenameAlreadyExistsError as err:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="a file with the same name already exists in the target folder",
         ) from err
