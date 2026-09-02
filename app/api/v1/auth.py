@@ -11,9 +11,19 @@ from app.core.config import settings
 from app.core.security import create_access_token, hash_passwords, verify_password
 from app.db.session import get_db_session
 from app.models.user import User
-from app.schemas.auth import Token, UserRegister
+from app.schemas.auth import (
+    EmailVerificationConfirm,
+    EmailVerificationStatus,
+    Token,
+    UserRegister,
+)
 from app.schemas.user import UserPublic
 from app.services.auth_service import AuthService, RefreshTokenInvalidError
+from app.services.email_service import EmailDeliveryUnavailableError, EmailService
+from app.services.email_verification_service import (
+    EmailVerificationService,
+    EmailVerificationTokenInvalidError,
+)
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -156,3 +166,44 @@ async def logout_all_devices(
     _clear_refresh_cookie(res)
 
     return res
+
+
+@router.post("/email-verification/request", response_model=EmailVerificationStatus)
+async def request_email_verification(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_db_session),
+) -> EmailVerificationStatus:
+    verification_service = EmailVerificationService(session)
+    verification_token = await verification_service.create_token_for_user(
+        current_user.id
+    )
+
+    if verification_token is None:
+        return EmailVerificationStatus(verified=True)
+    try:
+        await EmailService().send_verification_email(
+            recipient=current_user.email, verification_token=verification_token
+        )
+    except EmailDeliveryUnavailableError as err:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="could not send verification email, try again later",
+        ) from err
+
+    return EmailVerificationStatus(verified=False)
+
+
+@router.post("/email-verification/confirm", response_model=EmailVerificationStatus)
+async def confirm_email_verification(
+    payload: EmailVerificationConfirm, session: AsyncSession = Depends(get_db_session)
+) -> EmailVerificationStatus:
+    try:
+        user = await EmailVerificationService(session).confirm_token(payload.token)
+
+    except EmailVerificationTokenInvalidError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="verification token is invalid, expired or already used",
+        ) from err
+
+    return EmailVerificationStatus(verified=user.email_verified_at is not None)
