@@ -174,3 +174,28 @@ class FolderRepo:
 
         result = await self._session.scalars(statement)
         return list(result.all())
+
+    @staticmethod
+    def _contain_pattern(query: str) -> str:
+        """escapes sql like wild cards so % _ and \\ remain literal characters in a user's query"""
+
+        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+        return f"%{escaped}%"
+
+    async def search_for_owner(self, owner_id: UUID, query: str) -> list[Folder]:
+        """search active folders by a literal case insensitive folder name fragment"""
+        pattern = self._contain_pattern(query)
+
+        statement = (
+            select(Folder)
+            .where(
+                Folder.owner_id == owner_id,
+                Folder.deleted_at.is_(None),
+                Folder.name.ilike(pattern, escape="\\"),
+            )
+            .order_by(Folder.name.asc(), Folder.id.asc())
+        )
+
+        result = await self._session.scalars(statement)
+        return list(result.all())

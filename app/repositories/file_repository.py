@@ -168,3 +168,28 @@ class FileRepo:
 
         result = await self._session.scalars(statement)
         return list(result.all())
+
+    @staticmethod
+    def _contain_pattern(query: str) -> str:
+        """escapes sql like wild cards so % _ and \\ remain literal characters in a user's query"""
+
+        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+        return f"%{escaped}%"
+
+    async def search_for_owner(self, owner_id: UUID, query: str) -> list[StoredFile]:
+        """search files by a literal case insensitive filename fragment"""
+        pattern = self._contain_pattern(query)
+
+        statement = (
+            select(StoredFile)
+            .where(
+                StoredFile.owner_id == owner_id,
+                StoredFile.deleted_at.is_(None),
+                StoredFile.name.ilike(pattern, escape="\\"),
+            )
+            .order_by(StoredFile.name.asc(), StoredFile.id.asc())
+        )
+
+        result = await self._session.scalars(statement)
+        return list(result.all())
