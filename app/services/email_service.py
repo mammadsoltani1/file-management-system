@@ -34,7 +34,6 @@ class EmailService:
             "from": sender,
             "to": [recipient],
             "subject": "verify your email address",
-            "text": f"hi \n\nverify your email address by opening this link \n{verification_url}\n\nthis verification link expires at {settings.EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES // 60} hours\nignore if it was not you who made an account",
             "html": f"""\
                 <!doctype html>
                 <html lang="en">
