@@ -61,7 +61,8 @@ def upgrade() -> None:
         unique=False,
     )
     op.add_column(
-        "users", sa.Column("email_verified_at", sa.DateTime(timezone=True), nullable=True)
+        "users",
+        sa.Column("email_verified_at", sa.DateTime(timezone=True), nullable=True),
     )
 
 
@@ -74,9 +75,11 @@ def downgrade() -> None:
         "ix_email_verification_tokens_used_at", table_name="email_verification_tokens"
     )
     op.drop_index(
-        "ix_email_verification_tokens_token_hash", table_name="email_verification_tokens"
+        "ix_email_verification_tokens_token_hash",
+        table_name="email_verification_tokens",
     )
     op.drop_index(
-        "ix_email_verification_tokens_expires_at", table_name="email_verification_tokens"
+        "ix_email_verification_tokens_expires_at",
+        table_name="email_verification_tokens",
     )
     op.drop_table("email_verification_tokens")
