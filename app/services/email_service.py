@@ -24,7 +24,7 @@ class EmailService:
         self._validate_configuration()
         query = urlencode({"token": verification_token})
         verification_url = f"{settings.EMAIL_VERIFICATION_FRONTEND_URL}?{query}"
-
+ 
         sender = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM_ADDRESS}>"
 
         payload = {
