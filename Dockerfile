@@ -13,6 +13,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
 COPY app ./app
+COPY frontend ./frontend
 COPY alembic ./alembic
 COPY alembic.ini ./
 

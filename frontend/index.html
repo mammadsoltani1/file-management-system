@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>FileHub</title>
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+    <header>
+        <h1>FileHub</h1>
+        <div id="user-bar" class="hidden">
+            <span id="user-email"></span>
+            <button id="logout-button">Log out</button>
+            <button id="logout-all-button">Log out everywhere</button>
+        </div>
+    </header>
+
+    <main>
+        <section id="auth-section">
+            <div class="auth-forms">
+                <form id="login-form">
+                    <h2>Log in</h2>
+                    <label>Email <input type="email" id="login-email" required /></label>
+                    <label>Password <input type="password" id="login-password" required /></label>
+                    <button type="submit">Log in</button>
+                    <p id="login-error" class="error"></p>
+                </form>
+
+                <form id="register-form">
+                    <h2>Register</h2>
+                    <label>Email <input type="email" id="register-email" required /></label>
+                    <label>Password <input type="password" id="register-password" minlength="8" required /></label>
+                    <button type="submit">Register</button>
+                    <p id="register-error" class="error"></p>
+                </form>
+            </div>
+        </section>
+
+        <section id="app-section" class="hidden">
+            <div class="toolbar">
+                <nav id="breadcrumb"></nav>
+                <button id="shared-button" type="button">Shared with me</button>
+                <button id="trash-button" type="button">View trash</button>
+            </div>
+
+            <div class="toolbar">
+                <form id="search-form">
+                    <input type="text" id="search-query" placeholder="Search files and folders" required />
+                    <button type="submit">Search</button>
+                </form>
+            </div>
+
+            <div class="toolbar">
+                <form id="create-folder-form">
+                    <input type="text" id="new-folder-name" placeholder="New folder name" required />
+                    <button type="submit">Create folder</button>
+                </form>
+
+                <form id="upload-form">
+                    <input type="file" id="upload-input" required />
+                    <button type="submit">Upload file</button>
+                </form>
+            </div>
+
+            <div class="toolbar">
+                <button id="bulk-move-button" type="button">Move selected</button>
+                <button id="bulk-copy-button" type="button">Copy selected</button>
+                <button id="bulk-delete-button" type="button">Delete selected</button>
+                <button id="paste-button" type="button" class="hidden">Paste here</button>
+                <span id="clipboard-status"></span>
+            </div>
+
+            <p id="app-error" class="error"></p>
+
+            <table id="listing-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Size</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="listing-body"></tbody>
+            </table>
+            <p id="empty-message" class="hidden">This folder is empty.</p>
+        </section>
+
+        <section id="trash-section" class="hidden">
+            <div class="toolbar">
+                <h2>Trash</h2>
+                <button id="back-to-files-button" type="button">Back to files</button>
+            </div>
+
+            <p id="trash-error" class="error"></p>
+
+            <table id="trash-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Deleted at</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="trash-body"></tbody>
+            </table>
+            <p id="trash-empty-message" class="hidden">Trash is empty.</p>
+        </section>
+
+        <section id="search-section" class="hidden">
+            <div class="toolbar">
+                <h2>Search results</h2>
+                <button id="search-back-button" type="button">Back to files</button>
+            </div>
+
+            <p id="search-error" class="error"></p>
+
+            <table id="search-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="search-body"></tbody>
+            </table>
+            <p id="search-empty-message" class="hidden">No matches found.</p>
+        </section>
+
+        <section id="shares-section" class="hidden">
+            <div class="toolbar">
+                <h2>Shares for <span id="shares-file-name"></span></h2>
+                <button id="shares-back-button" type="button">Back to files</button>
+            </div>
+
+            <div class="toolbar">
+                <form id="add-share-form">
+                    <input type="email" id="share-recipient-email" placeholder="Share with email" required />
+                    <button type="submit">Share</button>
+                </form>
+            </div>
+
+            <p id="shares-error" class="error"></p>
+
+            <table id="shares-table">
+                <thead>
+                    <tr>
+                        <th>Shared with</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="shares-body"></tbody>
+            </table>
+            <p id="shares-empty-message" class="hidden">This file is not shared with anyone yet.</p>
+        </section>
+
+        <section id="received-section" class="hidden">
+            <div class="toolbar">
+                <h2>Shared with me</h2>
+                <button id="received-back-button" type="button">Back to files</button>
+            </div>
+
+            <p id="received-error" class="error"></p>
+
+            <table id="received-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Size</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="received-body"></tbody>
+            </table>
+            <p id="received-empty-message" class="hidden">No one has shared a file with you yet.</p>
+        </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

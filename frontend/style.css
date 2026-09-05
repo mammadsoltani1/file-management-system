@@ -1,0 +1,171 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 0;
+    color: #222;
+    background: #fafafa;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: #fff;
+    border-bottom: 1px solid #ddd;
+}
+
+header h1 {
+    font-size: 1.25rem;
+    margin: 0;
+}
+
+#user-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+main {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.auth-forms {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+form {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 1.25rem;
+    flex: 1;
+    min-width: 240px;
+}
+
+form h2 {
+    margin-top: 0;
+    font-size: 1rem;
+}
+
+form label {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+}
+
+form input {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+    padding: 0.4rem;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+button {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid #888;
+    background: #f0f0f0;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #e4e4e4;
+}
+
+.toolbar {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.toolbar h2 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+#clipboard-status {
+    font-size: 0.85rem;
+    color: #555;
+}
+
+table th:first-child,
+table td:first-child {
+    width: 2rem;
+}
+
+.toolbar form {
+    flex: 1;
+    min-width: 220px;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.75rem;
+}
+
+.toolbar input[type="text"] {
+    flex: 1;
+    padding: 0.4rem;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+#breadcrumb {
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+#breadcrumb a {
+    color: #333;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+}
+
+th, td {
+    text-align: left;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid #eee;
+    font-size: 0.9rem;
+}
+
+th {
+    background: #f2f2f2;
+}
+
+td.name a {
+    color: #222;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+td.actions button {
+    margin-right: 0.4rem;
+    font-size: 0.8rem;
+}
+
+.error {
+    color: #b00020;
+    min-height: 1.1em;
+    font-size: 0.9rem;
+}

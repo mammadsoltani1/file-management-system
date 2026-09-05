@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import Depends, FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.router import api_router
@@ -10,6 +13,8 @@ from app.services.email_verification_service import (
     EmailVerificationTokenInvalidError,
 )
 
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+
 app = FastAPI(
     title=settings.APP_NAME,
     description="A simple file management system built with FastAPI.",
@@ -17,6 +22,12 @@ app = FastAPI(
 )
 
 app.include_router(api_router, prefix="/api/v1")
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+
+@app.get("/")
+async def index() -> FileResponse:
+    return FileResponse(FRONTEND_DIR / "index.html")
 
 
 @app.get("/health")
