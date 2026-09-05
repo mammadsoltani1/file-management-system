@@ -17,8 +17,10 @@ from fastapi.responses import FileResponse
 from app.api.deps import get_current_user, get_file_service
 from app.models.user import User
 from app.schemas.directory import DirectoryListing
-from app.schemas.file import FilePublic
+from app.schemas.file import BulkFileCopy, BulkFileMove, BulkFileOperation, FilePublic
 from app.services.file_service import (
+    BulkFilenameConflictError,
+    BulkFileNotFoundError,
     CopyDestinationFolderNotFound,
     DestinationFolderNotFoundError,
     FileCopy,
@@ -135,6 +137,97 @@ async def download_file(
         media_type=stored_file.content_type,
         filename=stored_file.name,
     )
+
+
+@router.post("/bulk/delete", status_code=status.HTTP_204_NO_CONTENT)
+async def bulk_delete_files(
+    payload: BulkFileOperation,
+    current_user: Annotated[User, Depends(get_current_user)],
+    file_service: Annotated[FileService, Depends(get_file_service)],
+) -> Response:
+    try:
+        await file_service.bulk_delete_files(
+            owner_id=current_user.id, file_ids=payload.file_ids
+        )
+    except BulkFileNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="one or more selected files were not found",
+        ) from err
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/bulk/move", status_code=status.HTTP_204_NO_CONTENT)
+async def bulk_move_files(
+    payload: BulkFileMove,
+    current_user: Annotated[User, Depends(get_current_user)],
+    file_service: Annotated[FileService, Depends(get_file_service)],
+) -> Response:
+    try:
+        await file_service.bulk_move_files(owner_id=current_user.id, payload=payload)
+    except BulkFileNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="one or more selected files were not found",
+        ) from err
+    except DestinationFolderNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="the destination folder was not found",
+        ) from err
+    except BulkFilenameConflictError as err:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "the bulk move would create duplicate filenames in the destination folder"
+            ),
+        ) from err
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/bulk/copy",
+    response_model=list[FilePublic],
+    status_code=status.HTTP_201_CREATED,
+)
+async def bulk_copy_files(
+    payload: BulkFileCopy,
+    current_user: Annotated[User, Depends(get_current_user)],
+    file_service: Annotated[FileService, Depends(get_file_service)],
+) -> list[FilePublic]:
+    try:
+        return await file_service.bulk_copy_files(
+            owner_id=current_user.id,
+            payload=payload,
+        )
+    except BulkFileNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="one or more selected files were not found",
+        ) from err
+    except DestinationFolderNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="the destination folder was not found",
+        ) from err
+    except BulkFilenameConflictError as err:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "the bulk copy would create duplicate filenames "
+                "in the destination folder"
+            ),
+        ) from err
+    except StoredFileContentMissingError as err:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail=(
+                "one or more file records exist, but their "
+                "stored content is unavailable"
+            ),
+        ) from err
 
 
 @router.delete("/{file_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -12,7 +12,7 @@ from app.models.folder import Folder
 from app.models.stored_file import StoredFile
 from app.repositories.file_repository import FileRepo
 from app.repositories.folder_repository import FolderRepo
-from app.schemas.file import FileCopy, FileMove, FileRename
+from app.schemas.file import BulkFileCopy, BulkFileMove, FileCopy, FileMove, FileRename
 from app.storage.base import StorageProvider
 
 
@@ -46,6 +46,14 @@ class FilenameAlreadyExistsError(Exception):
 
 class CopyDestinationFolderNotFound(Exception):
     """raised when a file copy target folder is unavailable to the user"""
+
+
+class BulkFileNotFoundError(Exception):
+    """raised when one or more selected files do not belong to the user"""
+
+
+class BulkFilenameConflictError(Exception):
+    """raised when a bulk operation would create duplicate filenames"""
 
 
 class FileService:
@@ -322,4 +330,160 @@ class FileService:
             await self._session.rollback()
             if content_was_copied:
                 await self._storage.delete(copied_storage_key)
+            raise
+
+    async def _get_active_files_for_bulk_operation(
+        self, owner_id: UUID, file_ids: list[UUID]
+    ) -> list[StoredFile]:
+        files = await self._files.list_active_for_owner_by_ids(
+            owner_id=owner_id, file_ids=file_ids
+        )
+
+        if len(files) != len(file_ids):
+            raise BulkFileNotFoundError
+        return files
+
+    async def _validate_bulk_destination(
+        self, owner_id: UUID, destination_folder_id: UUID | None
+    ) -> None:
+        if destination_folder_id is None:
+            return
+        destination_folder = await self._folders.get_for_owner(
+            folder_id=destination_folder_id, owner_id=owner_id
+        )
+        if destination_folder is None:
+            raise DestinationFolderNotFoundError
+
+    async def _validate_bulk_name_conflicts(
+        self,
+        owner_id: UUID,
+        files: list[StoredFile],
+        destination_folder_id: UUID | None,
+        exclude_selected_files: bool,
+    ) -> None:
+        """ensures every destination filename is unique
+        for move selected files are excluded from the destination check because they are leaving their current location all together
+        for copy selected files remain in their original location and because of that they must not be excluded
+        """
+        names = [file.name for file in files]
+        if len(names) != len(set(names)):
+            raise BulkFilenameConflictError
+
+        destination_files = await self._files.list_for_owner(
+            owner_id=owner_id, folder_id=destination_folder_id
+        )
+
+        file_ids = [file.id for file in files]
+
+        for file in destination_files:
+            if exclude_selected_files and file.id in file_ids:
+                continue
+            if file.name in names:
+                raise BulkFilenameConflictError
+
+    async def bulk_delete_files(self, owner_id: UUID, file_ids: list[UUID]) -> None:
+        files = await self._get_active_files_for_bulk_operation(
+            owner_id=owner_id, file_ids=file_ids
+        )
+
+        trash_batch_id = uuid4()
+        deleted_at = datetime.now(UTC)
+
+        try:
+            for file in files:
+                file.deleted_at = deleted_at
+                file.trash_batch_id = trash_batch_id
+
+            await self._session.commit()
+        except Exception:
+            await self._session.rollback()
+            raise
+
+    async def bulk_move_files(self, owner_id: UUID, payload: BulkFileMove) -> None:
+        files = await self._get_active_files_for_bulk_operation(
+            owner_id=owner_id, file_ids=payload.file_ids
+        )
+
+        await self._validate_bulk_destination(
+            owner_id=owner_id, destination_folder_id=payload.folder_id
+        )
+
+        await self._validate_bulk_name_conflicts(
+            owner_id=owner_id,
+            files=files,
+            destination_folder_id=payload.folder_id,
+            exclude_selected_files=True,
+        )
+
+        try:
+            for file in files:
+                file.folder_id = payload.folder_id
+            await self._session.commit()
+        except Exception:
+            await self._session.rollback()
+            raise
+
+    async def bulk_copy_files(
+        self, owner_id: UUID, payload: BulkFileCopy
+    ) -> list[StoredFile]:
+        files = await self._get_active_files_for_bulk_operation(
+            owner_id=owner_id, file_ids=payload.file_ids
+        )
+
+        await self._validate_bulk_destination(
+            owner_id=owner_id, destination_folder_id=payload.folder_id
+        )
+
+        await self._validate_bulk_name_conflicts(
+            owner_id=owner_id,
+            files=files,
+            destination_folder_id=payload.folder_id,
+            exclude_selected_files=False,
+        )
+
+        missing_content = [
+            file for file in files if not await self._storage.exists(file.storage_key)
+        ]
+
+        if missing_content:
+            raise StoredFileContentMissingError
+
+        copied_files: list[StoredFile] = []
+        copied_storage_keys: list[str] = []
+
+        try:
+            for source_file in files:
+                copied_file_id = uuid4()
+                copied_storage_key = f"users/{owner_id}/files/{copied_file_id}"
+
+                await self._storage.copy(
+                    source_key=source_file.storage_key,
+                    destination_key=copied_storage_key,
+                )
+
+                copied_storage_keys.append(copied_storage_key)
+                copied_file = StoredFile(
+                    id=copied_file_id,
+                    owner_id=owner_id,
+                    folder_id=payload.folder_id,
+                    name=source_file.name,
+                    storage_key=copied_storage_key,
+                    content_type=source_file.content_type,
+                    size_bytes=source_file.size_bytes,
+                    sha256=source_file.sha256,
+                )
+
+                self._files.add(copied_file)
+                copied_files.append(copied_file)
+            await self._session.commit()
+
+            for copied_file in copied_files:
+                await self._session.refresh(copied_file)
+
+            return copied_files
+        except Exception:
+            await self._session.rollback()
+
+            for storage_key in copied_storage_keys:
+                await self._storage.delete(storage_key)
             raise
