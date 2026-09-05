@@ -193,3 +193,18 @@ class FileRepo:
 
         result = await self._session.scalars(statement)
         return list(result.all())
+
+    async def list_active_for_owner_by_ids(
+        self, owner_id: UUID, file_ids: list[UUID]
+    ) -> list[StoredFile]:
+        if not file_ids:
+            return []
+
+        statement = select(StoredFile).where(
+            StoredFile.id.in_(file_ids),
+            StoredFile.owner_id == owner_id,
+            StoredFile.deleted_at.is_(None),
+        )
+
+        result = await self._session.scalars(statement)
+        return list(result.all())
