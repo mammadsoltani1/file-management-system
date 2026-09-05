@@ -5,14 +5,19 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 from fastapi import UploadFile
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.models.file_share import FileShare
 from app.models.folder import Folder
 from app.models.stored_file import StoredFile
+from app.models.user import User
 from app.repositories.file_repository import FileRepo
+from app.repositories.file_share_repository import FileShareRepo
 from app.repositories.folder_repository import FolderRepo
 from app.schemas.file import BulkFileCopy, BulkFileMove, FileCopy, FileMove, FileRename
+from app.schemas.share import FileShareCreate
 from app.storage.base import StorageProvider
 
 
@@ -56,12 +61,29 @@ class BulkFilenameConflictError(Exception):
     """raised when a bulk operation would create duplicate filenames"""
 
 
+class ShareRecipientNotFoundError(Exception):
+    """raised when the requested recipient email has no user"""
+
+
+class CannotShareFileWithOwnerError(Exception):
+    """raised when the owner tries to share a file with themselves"""
+
+
+class FileAlreadySharedError(Exception):
+    """raised when a file is already shared with the target user"""
+
+
+class FileShareNotFoundError(Exception):
+    """raised when a share record can't be found for the file owner"""
+
+
 class FileService:
     def __init__(self, session: AsyncSession, storage: StorageProvider) -> None:
         self._session = session
         self._storage = storage
         self._files = FileRepo(session)
         self._folders = FolderRepo(session)
+        self._shares = FileShareRepo(session)
 
     async def upload_file(
         self, owner_id: UUID, folder_id: UUID | None, upload: UploadFile
@@ -487,3 +509,89 @@ class FileService:
             for storage_key in copied_storage_keys:
                 await self._storage.delete(storage_key)
             raise
+
+    async def share_file(
+        self, owner_id: UUID, file_id: UUID, payload: FileShareCreate
+    ) -> FileShare:
+        file = await self._files.get_for_owner(file_id=file_id, owner_id=owner_id)
+
+        if file is None:
+            raise StoredFileNotFoundError
+
+        statement = select(User).where(User.email == payload.recipient_email)
+        result = await self._session.scalars(statement)
+        recipient = result.one_or_none()
+
+        if recipient is None:
+            raise ShareRecipientNotFoundError
+        if recipient.id == owner_id:
+            raise CannotShareFileWithOwnerError
+
+        existing_share = await self._shares.get_for_file_and_recipient(
+            file_id=file_id, recipient_id=recipient.id
+        )
+        if existing_share is not None:
+            raise FileAlreadySharedError
+
+        file_share = FileShare(
+            file_id=file.id, owner_id=owner_id, recipient_id=recipient.id
+        )
+        self._shares.add(file_share)
+
+        try:
+            await self._session.commit()
+            await self._session.refresh(file_share, attribute_names=["recipient"])
+        except Exception:
+            await self._session.rollback()
+            raise
+
+        return file_share
+
+    async def list_file_shares(self, owner_id: UUID, file_id: UUID) -> list[FileShare]:
+        file = await self._files.get_for_owner(owner_id=owner_id, file_id=file_id)
+
+        if file is None:
+            raise StoredFileNotFoundError
+
+        return await self._shares.list_for_file_owner(
+            file_id=file_id, owner_id=owner_id
+        )
+
+    async def revoke_file_share(self, owner_id: UUID, share_id: UUID) -> None:
+        file_share = await self._shares.get_for_owner(
+            share_id=share_id, owner_id=owner_id
+        )
+        if file_share is None:
+            raise FileShareNotFoundError
+        try:
+            await self._shares.delete(file_share)
+            await self._session.commit()
+        except Exception:
+            await self._session.rollback()
+            raise
+
+    async def list_received_files(self, recipient_id: UUID) -> list[StoredFile]:
+        shares = await self._shares.list_received_by_user(recipient_id=recipient_id)
+        return [share.file for share in shares if share.file.deleted_at is None]
+
+    async def get_shared_download_file(
+        self, recipient_id: UUID, file_id: UUID
+    ) -> tuple[StoredFile, Path]:
+        file_share = await self._shares.get_for_file_and_recipient(
+            file_id=file_id, recipient_id=recipient_id
+        )
+        if file_share is None:
+            raise StoredFileNotFoundError
+        file = await self._files.get_for_owner(
+            file_id=file_id, owner_id=file_share.owner_id
+        )
+
+        if file is None:
+            raise StoredFileNotFoundError
+
+        if not await self._storage.exists(file.storage_key):
+            raise StoredFileContentMissingError
+
+        path = await self._storage.get_path(file.storage_key)
+
+        return file, path
